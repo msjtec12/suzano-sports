@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand-graphite: #101522;
+  --brand-blue: #087BD3;
+  --brand-orange: #FF7215;
+  --brand-red: #E83229;
+  --brand-ice: #F6F8FC;
+}
+
+body {
+  background-color: var(--brand-ice);
+  color: var(--brand-graphite);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
