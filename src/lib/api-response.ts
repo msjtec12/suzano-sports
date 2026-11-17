@@ -28,8 +28,7 @@ export function handleApiError(err: unknown) {
   }
 
   console.error("[API Unhandled Error]", err);
-  const message =
-    err instanceof Error ? err.message : "Erro interno ao processar a solicitação.";
+  const message = "Erro interno ao processar a solicitação.";
   return NextResponse.json(
     {
       error: message,
