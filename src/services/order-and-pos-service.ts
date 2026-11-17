@@ -484,11 +484,11 @@ export async function createPosSale(
   await requirePermission(actor, "pos", "create");
   const parsed = createPosSaleSchema.parse(rawInput);
 
-  if (parsed.discount > 0) {
+  if (parsed.discount > 0 || parsed.items.some((item) => item.unitPriceOverride !== undefined)) {
     const canDiscount = await checkPermission(actor, "pos", "approveDiscount");
     if (!canDiscount) {
       throw new ForbiddenError(
-        "Seu perfil não possui permissão para aplicar descontos no PDV."
+        "Seu perfil não possui permissão para aplicar descontos ou alterar preços no PDV."
       );
     }
   }
