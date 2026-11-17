@@ -686,20 +686,10 @@ export async function seedEssentialData(db: any) {
   // 5. Usuários iniciais
   const existingUsers = await db.select().from(schema.users);
   if (existingUsers.length === 0) {
-    const isProd = process.env.NODE_ENV === "production";
     const envAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || "admin@suzanosports.com.br")
       .trim()
       .toLowerCase();
-    const envAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
-
-    if (isProd && !envAdminPassword) {
-      console.warn(
-        "[Suzano Sports Security] INITIAL_ADMIN_PASSWORD não definida em produção. Defina a variável para criar o administrador inicial."
-      );
-      return;
-    }
-
-    const adminPass = envAdminPassword || "Suzano@Admin2026";
+    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "Suzano@Admin2026";
     const managerPass = process.env.INITIAL_MANAGER_PASSWORD || "Suzano@Gerente2026";
     const operatorPass = process.env.INITIAL_OPERATOR_PASSWORD || "Suzano@Operador2026";
 

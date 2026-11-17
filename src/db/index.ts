@@ -77,10 +77,12 @@ async function createAndInitializeDb(): Promise<AppDatabase> {
     return db;
   }
 
-  // Fallback para PostgreSQL 16 real embarcado persistente em disco (desenvolvimento local e testes)
+  // Fallback para PostgreSQL 16 real embarcado persistente em disco (desenvolvimento local, preview Vercel e testes)
   const customDir = process.env.PGLITE_DATA_DIR;
   const dataDir = customDir
     ? customDir
+    : process.env.VERCEL
+    ? "/tmp/pglite-suzano-sports"
     : path.join(process.cwd(), ".data", "pglite-suzano-sports");
 
   if (dataDir !== "memory://") {
