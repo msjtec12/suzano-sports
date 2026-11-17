@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthenticatedUser } from "@/lib/server-auth";
+import { requirePermission } from "@/services/auth-service";
 import {
   updateProduct,
   setProductStatus,
@@ -14,7 +15,8 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAuthenticatedUser();
+    const user = await requireAuthenticatedUser();
+    await requirePermission(user, "products", "view");
     const { id } = await context.params;
     const product = await getProductBySlugOrId(id, true);
     return NextResponse.json({ product });
