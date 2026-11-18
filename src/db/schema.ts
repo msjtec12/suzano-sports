@@ -123,7 +123,7 @@ export const storeSettings = pgTable("store_settings", {
     .default("https://www.instagram.com/suzano_sports/"),
   whatsappShortLink: varchar("whatsapp_short_link", { length: 255 })
     .notNull()
-    .default("https://whats.link/suzanosports"),
+    .default("https://wa.me/5511939057301"),
   whatsappPhone: varchar("whatsapp_phone", { length: 32 }).default(""), // Número validado (ex: 5511999999999)
   addressStreet: varchar("address_street", { length: 200 })
     .notNull()

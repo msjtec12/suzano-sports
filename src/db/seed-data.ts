@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import * as schema from "./schema";
 import { hashPassword } from "../lib/crypto";
 
@@ -428,10 +428,10 @@ export async function seedStarterCatalogIfEmpty(db: any) {
     .set({
       logoUrl: "/brand/suzano-sports-logo-original.png",
       heroBannerUrl: "/brand/fachada-suzano-sports.jpg",
-      whatsappPhone: "5511959148681",
+      whatsappPhone: "5511939057301",
       addressConfirmed: true,
       topBarText:
-        "Ofertas da Loja Física: Chinelo Kenner R$ 49,99 e Tênis Olympikus R$ 99,99 • WhatsApp (11) 95914-8681",
+        "Ofertas da Loja Física: Chinelo Kenner R$ 49,99 e Tênis Olympikus R$ 99,99 • WhatsApp (11) 93905-7301",
       updatedAt: new Date(),
     })
     .where(eq(schema.storeSettings.id, "default"));
@@ -639,11 +639,11 @@ export async function seedEssentialData(db: any) {
       heroPrimaryCtaText: "Ver produtos",
       heroSecondaryCtaText: "Conferir promoções",
       topBarText:
-        "Ofertas da Loja Física: Chinelo Kenner R$ 49,99 e Tênis Olympikus R$ 99,99 • WhatsApp (11) 95914-8681",
+        "Ofertas da Loja Física: Chinelo Kenner R$ 49,99 e Tênis Olympikus R$ 99,99 • WhatsApp (11) 93905-7301",
       topBarActive: true,
       instagramUrl: "https://www.instagram.com/suzano_sports/",
-      whatsappShortLink: "https://whats.link/suzanosports",
-      whatsappPhone: "5511959148681",
+      whatsappShortLink: "https://wa.me/5511939057301",
+      whatsappPhone: "5511939057301",
       addressStreet: "Rua Benjamin Constant, 810",
       addressDistrict: "Centro",
       addressCity: "Suzano",
@@ -661,6 +661,21 @@ export async function seedEssentialData(db: any) {
     });
   }
 
+  // Atualiza os dados já persistidos no Neon, sem apagar outras informações editadas da loja.
+  await db.update(schema.storeSettings)
+    .set({
+      whatsappPhone: "5511939057301",
+      whatsappShortLink: "https://wa.me/5511939057301",
+      topBarText: sql`replace(${schema.storeSettings.topBarText}, '(11) 95914-8681', '(11) 93905-7301')`,
+      updatedAt: new Date(),
+    })
+    .where(eq(schema.storeSettings.id, "default"));
+
+  // Atualiza as chamadas antigas em campanhas já existentes, mantendo o restante da descrição.
+  await db.update(schema.campaigns)
+    .set({ subtitle: sql`replace(${schema.campaigns.subtitle}, '(11) 95914-8681', '(11) 93905-7301')` })
+    .where(eq(schema.campaigns.id, "camp_sazonal_1"));
+
   // 3. Categorias iniciais identificadas nas referências
   const existingCategories = await db.select().from(schema.categories);
   if (existingCategories.length === 0) {
@@ -674,7 +689,7 @@ export async function seedEssentialData(db: any) {
       id: "camp_sazonal_1",
       title: "Promoção da Fachada: Chinelo Kenner R$ 49,99 & Tênis Olympikus R$ 99,99",
       subtitle:
-        "Garanta na loja física (Rua Benjamin Constant, 810 — Centro de Suzano) ou monte sua sacola no site e chame no WhatsApp (11) 95914-8681.",
+        "Garanta na loja física (Rua Benjamin Constant, 810 — Centro de Suzano) ou monte sua sacola no site e chame no WhatsApp (11) 93905-7301.",
       badgeText: "Promoção Imperdível Suzano Sports",
       ctaText: "Ver ofertas agora",
       ctaUrl: "/catalogo?promocao=true",

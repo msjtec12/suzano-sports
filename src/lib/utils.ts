@@ -112,7 +112,7 @@ export function buildWhatsAppUrl(params: {
       mode: "WA_ME",
     };
   }
-  const fallback = (params.whatsappShortLink || "https://whats.link/suzanosports").trim();
+  const fallback = (params.whatsappShortLink || "https://wa.me/5511939057301").trim();
   return {
     url: fallback,
     mode: "SHORT_LINK",

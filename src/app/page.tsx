@@ -124,7 +124,7 @@ export default async function HomePage() {
                     Rua Benjamin Constant, 810 — Centro, Suzano - SP
                   </p>
                   <span className="rounded bg-emerald-600/20 px-2 py-0.5 font-bold text-emerald-400">
-                    WhatsApp: (11) 95914-8681
+                    WhatsApp: (11) 93905-7301
                   </span>
                 </div>
                 <p className="mt-1 text-slate-300">
