@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS "store_settings" (
   "top_bar_text" varchar(255) DEFAULT 'Retire na loja no Centro de Suzano ou consulte entrega rápida pelo WhatsApp!' NOT NULL,
   "top_bar_active" boolean DEFAULT true NOT NULL,
   "instagram_url" varchar(255) DEFAULT 'https://www.instagram.com/suzano_sports/' NOT NULL,
-  "whatsapp_short_link" varchar(255) DEFAULT 'https://whats.link/suzanosports' NOT NULL,
+  "whatsapp_short_link" varchar(255) DEFAULT 'https://wa.me/5511939057301' NOT NULL,
   "whatsapp_phone" varchar(32) DEFAULT '',
   "address_street" varchar(200) DEFAULT 'Rua Benjamin Constant, 810' NOT NULL,
   "address_district" varchar(120) DEFAULT 'Centro' NOT NULL,
