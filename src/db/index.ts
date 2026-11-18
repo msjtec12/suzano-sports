@@ -77,7 +77,12 @@ async function createAndInitializeDb(): Promise<AppDatabase> {
     return db;
   }
 
-  // Fallback para PostgreSQL 16 real embarcado persistente em disco (desenvolvimento local, preview Vercel e testes)
+  // PGlite é exclusivo de desenvolvimento e testes; nunca utilizar armazenamento efêmero em produção.
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    throw new Error("DATABASE_URL do Neon PostgreSQL é obrigatória na Vercel e em produção.");
+  }
+
+  // Fallback local apenas em desenvolvimento e testes
   const customDir = process.env.PGLITE_DATA_DIR;
   const dataDir = customDir
     ? customDir

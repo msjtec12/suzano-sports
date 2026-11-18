@@ -32,9 +32,11 @@ export interface AuthenticatedUser {
 export const SESSION_COOKIE_NAME = "szs_admin_session";
 
 function getJwtSecret(): Uint8Array {
-  const secret =
-    process.env.AUTH_SECRET || "suzano-sports-dev-fallback-secret-key-min-32-chars";
-  return new TextEncoder().encode(secret);
+  const secret = process.env.AUTH_SECRET;
+  if (process.env.NODE_ENV === "production" && (!secret || secret.length < 32)) {
+    throw new Error("AUTH_SECRET forte (mínimo 32 caracteres) é obrigatório em produção.");
+  }
+  return new TextEncoder().encode(secret || "dev-only-session-secret-do-not-use-in-production");
 }
 
 // Rate limiter em memória complementar ao bloqueio persistido no banco
@@ -358,7 +360,7 @@ export async function createOrUpdateUser(
       active: input.active ?? true,
       updatedAt: new Date(),
     };
-    if (input.password && input.password.length >= 6) {
+    if (input.password && input.password.length >= 12) {
       updateData.passwordHash = hashPassword(input.password);
     }
     await db.update(schema.users).set(updateData).where(eq(schema.users.id, input.id));
@@ -372,8 +374,8 @@ export async function createOrUpdateUser(
     return { id: input.id };
   }
 
-  if (!input.password || input.password.length < 6) {
-    throw new AppError("A senha deve ter pelo menos 6 caracteres.");
+  if (!input.password || input.password.length < 12) {
+    throw new AppError("A senha deve ter pelo menos 12 caracteres.");
   }
 
   const newId = generateId("usr");

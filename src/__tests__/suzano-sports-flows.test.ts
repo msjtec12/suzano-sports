@@ -489,4 +489,24 @@ describe("Suzano Sports — Suíte Completa dos 21 Fluxos Críticos de Negócio"
     const stockOverview = await getStockOverview(adminUser);
     expect(stockOverview.summary.totalUnits).toBe(11); // 7 do Modelo X + 4 da Bola de Futebol
   });
+  it("Segurança: catálogo público nunca transmite custos de aquisição", async () => {
+    const publicCatalog = await getCatalogProducts({ includeInactive: false });
+    expect(publicCatalog.products.length).toBeGreaterThan(0);
+    for (const product of publicCatalog.products) {
+      expect(product.costPrice).toBe(0);
+      for (const variation of product.variations) {
+        expect(variation.costPrice).toBe(0);
+      }
+    }
+  });
+
+  it("Segurança: operador não pode contornar desconto alterando preço unitário", async () => {
+    await expect(createPosSale(operatorUser, {
+      customerName: "Teste de permissão",
+      discount: 0,
+      items: [{ variationId: variationPreto39Id, quantity: 1, unitPriceOverride: 0.01 }],
+      payments: [{ method: "PIX", amount: 0.01, feeAmount: 0, installments: 1, status: "CONFIRMED" }],
+    })).rejects.toThrow(ForbiddenError);
+  });
+
 });

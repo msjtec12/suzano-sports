@@ -10,12 +10,14 @@ import {
   listUsers,
   createOrUpdateUser,
   checkPermission,
+  requirePermission,
 } from "@/services/auth-service";
 import { handleApiError } from "@/lib/api-response";
 
 export async function GET() {
   try {
     const user = await requireAuthenticatedUser();
+    await requirePermission(user, "settings", "view");
     const [settings, campaigns] = await Promise.all([
       getStoreSettings(),
       listCampaigns(false),

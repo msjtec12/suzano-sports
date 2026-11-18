@@ -686,39 +686,44 @@ export async function seedEssentialData(db: any) {
   // 5. Usuários iniciais
   const existingUsers = await db.select().from(schema.users);
   if (existingUsers.length === 0) {
-    const envAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || "admin@suzanosports.com.br")
+    const isProduction = process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+    const envAdminEmail = (process.env.INITIAL_ADMIN_EMAIL || (isProduction ? "" : "admin@suzanosports.com.br"))
       .trim()
       .toLowerCase();
-    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || "Suzano@Admin2026";
-    const managerPass = process.env.INITIAL_MANAGER_PASSWORD || "Suzano@Gerente2026";
-    const operatorPass = process.env.INITIAL_OPERATOR_PASSWORD || "Suzano@Operador2026";
+    const adminPass = process.env.INITIAL_ADMIN_PASSWORD || (isProduction ? "" : "Suzano@Admin2026");
+    if (!envAdminEmail || !adminPass || (isProduction && adminPass.length < 12)) {
+      throw new Error("INITIAL_ADMIN_EMAIL e INITIAL_ADMIN_PASSWORD (mín. 12 caracteres) são obrigatórios no primeiro provisionamento em produção.");
+    }
+    await db.insert(schema.users).values({
+      id: "user_admin_1",
+      name: process.env.INITIAL_ADMIN_NAME || "Administrador Suzano Sports",
+      email: envAdminEmail,
+      passwordHash: hashPassword(adminPass),
+      roleId: "role_admin",
+      active: true,
+    });
 
-    await db.insert(schema.users).values([
-      {
-        id: "user_admin_1",
-        name: process.env.INITIAL_ADMIN_NAME || "Administrador Suzano Sports",
-        email: envAdminEmail,
-        passwordHash: hashPassword(adminPass),
-        roleId: "role_admin",
-        active: true,
-      },
-      {
-        id: "user_manager_1",
-        name: "Gerente da Loja",
-        email: "gerente@suzanosports.com.br",
-        passwordHash: hashPassword(managerPass),
-        roleId: "role_manager",
-        active: true,
-      },
-      {
-        id: "user_operator_1",
-        name: "Operador de Caixa / Atendimento",
-        email: "operador@suzanosports.com.br",
-        passwordHash: hashPassword(operatorPass),
-        roleId: "role_operator",
-        active: true,
-      },
-    ]);
+    // Contas de homologação nunca são criadas automaticamente em produção.
+    if (!isProduction) {
+      await db.insert(schema.users).values([
+        {
+          id: "user_manager_1",
+          name: "Gerente da Loja",
+          email: "gerente@suzanosports.com.br",
+          passwordHash: hashPassword(process.env.INITIAL_MANAGER_PASSWORD || "Suzano@Gerente2026"),
+          roleId: "role_manager",
+          active: true,
+        },
+        {
+          id: "user_operator_1",
+          name: "Operador de Caixa / Atendimento",
+          email: "operador@suzanosports.com.br",
+          passwordHash: hashPassword(process.env.INITIAL_OPERATOR_PASSWORD || "Suzano@Operador2026"),
+          roleId: "role_operator",
+          active: true,
+        },
+      ]);
+    }
   }
 
   // 6. Catálogo inicial de operação

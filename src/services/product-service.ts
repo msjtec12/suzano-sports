@@ -932,6 +932,21 @@ async function hydrateProducts(
   });
 }
 
+/**
+ * Não serializar custo de aquisição na vitrine, HTML de Server Components ou API pública.
+ * Mantém a estrutura esperada pelos componentes do catálogo sem revelar os valores reais.
+ */
+export function redactProductCostsForPublic(product: EnrichedProduct): EnrichedProduct {
+  return {
+    ...product,
+    costPrice: 0,
+    variations: product.variations.map((variation) => ({
+      ...variation,
+      costPrice: 0,
+    })),
+  };
+}
+
 export interface CatalogFilters {
   query?: string;
   categorySlug?: string;
@@ -1098,7 +1113,7 @@ export async function getCatalogProducts(filters: CatalogFilters = {}): Promise<
   }
 
   return {
-    products: filtered,
+    products: filters.includeInactive ? filtered : filtered.map(redactProductCostsForPublic),
     facets: {
       categories: Array.from(catCountMap.values()),
       brands: Array.from(brandCountMap.values()),
@@ -1130,7 +1145,8 @@ export async function getProductBySlugOrId(
   }
 
   const hydrated = await hydrateProducts([prod]);
-  return hydrated[0] || null;
+  const product = hydrated[0];
+  return product ? (includeInactive ? product : redactProductCostsForPublic(product)) : null;
 }
 
 /**
@@ -1164,5 +1180,5 @@ export async function getBestSellingProducts(limit = 4): Promise<EnrichedProduct
     prodRows.filter((p) => p.status === "ACTIVE" || p.status === "OUT_OF_STOCK")
   );
   const byId = new Map(hydrated.map((p) => [p.id, p]));
-  return ids.map((id) => byId.get(id)).filter((p): p is EnrichedProduct => Boolean(p));
+  return ids.map((id) => byId.get(id)).filter((p): p is EnrichedProduct => Boolean(p)).map(redactProductCostsForPublic);
 }
