@@ -1,78 +1,85 @@
+import { createHash, randomBytes } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { sql } from "drizzle-orm";
+import { getDb, isNeonConfigured } from "@/db";
 import { requireAuthenticatedUser } from "@/lib/server-auth";
-import { requirePermission } from "@/services/auth-service";
-import { AppError } from "@/lib/errors";
+import { checkPermission, createAuditLog } from "@/services/auth-service";
+import { AppError, ForbiddenError } from "@/lib/errors";
 import { handleApiError } from "@/lib/api-response";
 
-const ALLOWED_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-]);
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
-const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function isValidImage(bytes: Buffer, mime: string): boolean {
+  if (mime === "image/jpeg") return bytes.length >= 3 && bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255;
+  if (mime === "image/png") {
+    return bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  }
+  if (mime === "image/webp") {
+    return bytes.length >= 12 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP";
+  }
+  return false;
+}
 
 export async function POST(req: NextRequest) {
   try {
     const user = await requireAuthenticatedUser();
-    await requirePermission(user, "products", "create");
-
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    if (!file) {
-      throw new AppError("Nenhum arquivo de imagem enviado.");
+    const permitted = await Promise.all([
+      checkPermission(user, "products", "create"),
+      checkPermission(user, "products", "edit"),
+      checkPermission(user, "settings", "edit"),
+    ]);
+    if (!permitted.some(Boolean)) {
+      throw new ForbiddenError("Seu usuário não possui permissão para enviar imagens.");
     }
 
-    if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      throw new AppError(
-        "Formato de imagem não permitido. Envie JPG, PNG ou WebP."
-      );
+    // Em produção, os arquivos devem persistir exclusivamente no Neon.
+    if ((process.env.NODE_ENV === "production" || process.env.VERCEL) && !isNeonConfigured()) {
+      throw new AppError("Armazenamento Neon indisponível.", 503, "STORAGE_NOT_CONFIGURED");
     }
 
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      throw new AppError("A imagem excede o limite máximo de 5 MB.");
+    const length = Number(req.headers.get("content-length"));
+    if (Number.isFinite(length) && length > MAX_BYTES + 64 * 1024) {
+      throw new AppError("Imagem excede o limite de 5 MB.", 413, "FILE_TOO_LARGE");
     }
-
-    // Na Vercel o sistema de arquivos é efêmero; nunca informar sucesso para arquivo não persistido.
-    if (process.env.VERCEL || process.env.NODE_ENV === "production") {
-      throw new AppError("Upload indisponível até configurar armazenamento persistente (Vercel Blob/S3).", 503, "STORAGE_NOT_CONFIGURED");
+    const data = await req.formData();
+    const file = data.get("file");
+    if (!(file instanceof File)) throw new AppError("Nenhuma imagem foi enviada.");
+    if (!ALLOWED_TYPES.has(file.type)) throw new AppError("Envie apenas imagens JPG, PNG ou WebP.");
+    if (file.size === 0 || file.size > MAX_BYTES) {
+      throw new AppError("A imagem deve ter entre 1 byte e 5 MB.", 413, "INVALID_FILE_SIZE");
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const validSignature =
-      (file.type === "image/jpeg" && bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) ||
-      (file.type === "image/png" && bytes.length >= 8 && bytes.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) ||
-      (file.type === "image/webp" && bytes.length >= 12 && bytes.toString("ascii", 0, 4) === "RIFF" && bytes.toString("ascii", 8, 12) === "WEBP");
-    if (!validSignature) {
-      throw new AppError("O conteúdo do arquivo não corresponde ao formato de imagem informado.");
-    }
-    const ext =
-      file.type === "image/png"
-        ? "png"
-        : file.type === "image/webp"
-        ? "webp"
-        : "jpg";
+    if (!isValidImage(bytes, file.type)) throw new AppError("Assinatura do arquivo de imagem inválida.");
 
-    const safeFileName = `szs-${Date.now()}-${Math.random()
-      .toString(36)
-      .slice(2, 8)}.${ext}`;
+    const id = randomBytes(16).toString("hex");
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    const dataBase64 = bytes.toString("base64");
+    const db = await getDb();
 
-    // Em produção, se BLOB_READ_WRITE_TOKEN estiver configurado, orienta ou faz upload externo;
-    // caso contrário, persiste em public/uploads (sem nunca gravar binário no PostgreSQL)
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
-    await fs.writeFile(path.join(uploadDir, safeFileName), bytes);
+    // Parameterização SQL: decode() cria o campo BYTEA sem converter o arquivo em disco.
+    await db.execute(sql`
+      INSERT INTO media_assets (id, content_type, content, size_bytes, sha256, created_by_user_id)
+      VALUES (${id}, ${file.type}, decode(${dataBase64}, 'base64'), ${bytes.length}, ${hash}, ${user.id})
+    `);
 
-    return NextResponse.json(
-      {
-        url: `/uploads/${safeFileName}`,
-        storageMode: "LOCAL_DEVELOPMENT_ONLY",
-      },
-      { status: 201 }
-    );
-  } catch (err) {
-    return handleApiError(err);
+    await createAuditLog({
+      userId: user.id,
+      action: "MEDIA_UPLOADED",
+      entityType: "MEDIA",
+      entityId: id,
+      metadata: { contentType: file.type, sizeBytes: bytes.length },
+    });
+
+    return NextResponse.json({
+      url: `/api/media/${id}`,
+      storageMode: isNeonConfigured() ? "NEON_POSTGRESQL" : "LOCAL_PGLITE_DEVELOPMENT",
+    }, { status: 201, headers: { "Cache-Control": "no-store" } });
+  } catch (error) {
+    return handleApiError(error);
   }
 }
