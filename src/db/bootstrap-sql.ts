@@ -406,6 +406,18 @@ CREATE INDEX IF NOT EXISTS "expenses_status_idx" ON "expenses" ("status");
 CREATE INDEX IF NOT EXISTS "expenses_competence_idx" ON "expenses" ("competence_date");
 CREATE UNIQUE INDEX IF NOT EXISTS "expenses_recurrence_unique_idx" ON "expenses" ("recurrence_group", "recurrence_month_ref");
 
+-- Imagens persistidas no Neon PostgreSQL (bytea), sem uso de disco efêmero na Vercel.
+CREATE TABLE IF NOT EXISTS "media_assets" (
+  "id" varchar(64) PRIMARY KEY NOT NULL,
+  "content_type" varchar(32) NOT NULL,
+  "content" bytea NOT NULL,
+  "size_bytes" integer NOT NULL,
+  "sha256" varchar(64) NOT NULL,
+  "created_by_user_id" varchar(64) REFERENCES "users"("id") ON DELETE SET NULL,
+  "created_at" timestamp DEFAULT now() NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "media_assets_created_at_idx" ON "media_assets" ("created_at");
+
 CREATE TABLE IF NOT EXISTS "audit_logs" (
   "id" varchar(64) PRIMARY KEY NOT NULL,
   "user_id" varchar(64) REFERENCES "users"("id"),
