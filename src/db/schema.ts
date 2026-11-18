@@ -8,7 +8,13 @@ import {
   timestamp,
   index,
   uniqueIndex,
+  customType,
 } from "drizzle-orm/pg-core";
+
+// Binários armazenados como BYTEA no Neon PostgreSQL.
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() { return "bytea"; },
+});
 
 // ============================================================================
 // 1. PERFIS, PERMISSÕES E USUÁRIOS
@@ -67,6 +73,21 @@ export const users = pgTable(
 // ============================================================================
 // 2. CONFIGURAÇÕES DA LOJA E CAMPANHAS
 // ============================================================================
+
+
+export const mediaAssets = pgTable(
+  "media_assets",
+  {
+    id: varchar("id", { length: 64 }).primaryKey(),
+    contentType: varchar("content_type", { length: 32 }).notNull(),
+    content: bytea("content").notNull(),
+    sizeBytes: integer("size_bytes").notNull(),
+    sha256: varchar("sha256", { length: 64 }).notNull(),
+    createdByUserId: varchar("created_by_user_id", { length: 64 }).references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => [index("media_assets_created_at_idx").on(table.createdAt)]
+);
 
 export const storeSettings = pgTable("store_settings", {
   id: varchar("id", { length: 64 }).primaryKey(), // "default"
