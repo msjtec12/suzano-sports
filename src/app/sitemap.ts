@@ -1,9 +1,23 @@
 import type { MetadataRoute } from "next";
 import { listCategories, getCatalogProducts } from "@/services/product-service";
 
+export const dynamic = "force-dynamic";
+
+function resolveBaseUrl(): string {
+  if (process.env.NEXT_PUBLIC_SITE_URL) {
+    return process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "");
+  }
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  return "https://suzanosports.com.br";
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL || "https://suzanosports.com.br";
+  const baseUrl = resolveBaseUrl();
 
   const [categories, catalogData] = await Promise.all([
     listCategories(true),
